@@ -6,15 +6,15 @@
 - [x] Phase 2A — ECK operator installed
 - [x] Phase 2B — ECK deep dive
 - [x] Phase 3 — Elasticsearch deployment
-- [ ] Phase 4 — Kibana deployment
+- [x] Phase 4 — Kibana deployment
 - [ ] Phase 5 — Data indexing + search
 - [ ] Phase 6 — Self-healing + resilience
 - [ ] Phase 7 — Documentation + GitHub publish
 
 ## Current State
-Phase: 2B+3 complete
-Last action: ECK internals explored, ES deployed green, 3 docs indexed, self-healing verified (pod deleted → recreated in 7s, all data survived)
-Next action: Phase 4 — Deploy Kibana
+Phase: 4 complete
+Last action: Phase 4 complete — Kibana deployed, association controller auto-wired to ES, health green in 41s
+Next action: Phase 5 — Data indexing + Kibana UI exploration
 AWS resources active: YES (running ~$0.10/hr)
 
 ## Live cluster

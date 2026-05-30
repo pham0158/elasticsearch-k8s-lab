@@ -194,12 +194,117 @@ kubectl get pods -l elasticsearch.k8s.elastic.co/cluster-name=elastic-lab --watc
 
 ## Phase 4: Deploy Kibana
 
+### 1. Apply Kibana CR
+
 ```bash
 kubectl apply -f k8s/kibana.yaml
+```
 
+If running from SSM (no local repo), apply inline:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: elastic-lab
+  namespace: default
+spec:
+  version: 8.14.0
+  count: 1
+  elasticsearchRef:
+    name: elastic-lab
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 250m
+          limits:
+            memory: 1Gi
+            cpu: 500m
+EOF
+```
+
+### 2. Watch association controller wire Kibana to ES
+
+ECK's `kb-es-association-controller` automatically:
+- Copies the ES CA cert into a new Secret (`elastic-lab-kb-es-ca`)
+- Creates a dedicated `elastic-lab-kibana-user` in ES file realm
+- Generates a complete `kibana.yml` with ES URL, credentials, and cert paths
+- Mounts everything into the Kibana pod — no manual kibana.yml needed
+
+```bash
+kubectl get kibana elastic-lab --watch
+# Goes: red (starting) → green (ready)
+# Typically takes 30-60 seconds
+```
+
+### 3. Verify Kibana health
+
+```bash
 kubectl get kibana
-# NAME         HEALTH   NODES   VERSION   AGE
-# elastic-lab  green    1       8.14.0    3m
+kubectl get pods -l kibana.k8s.elastic.co/name=elastic-lab
+
+# Check Kibana status API from inside the pod
+KIBANA_POD=$(kubectl get pod \
+  -l kibana.k8s.elastic.co/name=elastic-lab \
+  -o jsonpath='{.items[0].metadata.name}')
+
+kubectl exec $KIBANA_POD -- \
+  curl -sk https://localhost:5601/api/status | \
+  python3 -c "import sys,json; s=json.load(sys.stdin); \
+  print('Status:', s.get('status',{}).get('overall',{}).get('level','unknown'))"
+# Expected: Status: available
+```
+
+Note: Kibana serves HTTPS on 5601 — use `-sk https://`, not `http://`.
+
+### 4. Access Kibana UI (port-forward)
+
+From your local machine (not SSM), set up port-forwarding via SSM:
+```bash
+# Start SSM port-forward session
+aws ssm start-session \
+  --target <control-plane-instance-id> \
+  --document-name AWS-StartPortForwardingSessionToRemoteHost \
+  --parameters '{"host":["elastic-lab-kb-http"],"portNumber":["5601"],"localPortNumber":["5601"]}'
+```
+
+Or from inside the cluster with kubectl port-forward:
+```bash
+kubectl port-forward svc/elastic-lab-kb-http 5601:5601
+```
+
+Then open `https://localhost:5601` in a browser.
+- Username: `elastic`
+- Password: from `elastic-lab-es-elastic-user` Secret
+
+### 5. What to expect in Kibana UI
+
+On first login Kibana shows the home screen. To explore the indexed data:
+1. Go to **Discover** (left nav)
+2. Create a data view for `lab-notes` index
+3. Browse the 3 indexed documents
+4. Use **Dev Tools** → Console to run raw ES queries:
+   ```
+   GET /lab-notes/_search
+   { "query": { "match": { "tags": "kubernetes" } } }
+   ```
+
+### 6. Why ES shows yellow with Kibana
+
+Kibana creates system indices (`.kibana`, `.kibana_task_manager`, etc.) with
+`replicas: 1` by default. On a single-node cluster these replicas can't be
+placed — the cluster turns yellow. This is expected and harmless for a lab.
+To force green:
+```bash
+kubectl exec elastic-lab-es-default-0 -- bash -c \
+  'curl -sk -u "elastic:PASSWORD" -X PUT \
+  "https://localhost:9200/.kibana*/_settings" \
+  -H "Content-Type: application/json" \
+  -d "{\"index\":{\"number_of_replicas\":0}}"'
 ```
 
 ---
