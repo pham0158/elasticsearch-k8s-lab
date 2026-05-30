@@ -78,7 +78,7 @@ zero SSH keys).
 | 4 | Kibana deployment | ~$0.15 |
 | 5 | Data indexing + search API | ~$0.15 |
 | 6 | Self-healing + resilience testing | ~$0.10 |
-| 7 | Interview prep + documentation | $0 |
+| 7 | Documentation + polish | $0 |
 
 ## Prerequisites
 
@@ -133,8 +133,6 @@ elasticsearch-k8s-lab/
 │   ├── architecture.md     # detailed topology
 │   ├── eck-internals.md    # operator pattern deep dive
 │   └── runbook.md          # bootstrap + troubleshooting
-└── notes/
-    └── interview-prep.md   # CP team talking points
 ```
 
 ## Author

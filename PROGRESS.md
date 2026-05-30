@@ -8,7 +8,7 @@
 - [ ] Phase 4 — Kibana deployment
 - [ ] Phase 5 — Data indexing + search
 - [ ] Phase 6 — Self-healing + resilience
-- [ ] Phase 7 — Interview prep + GitHub publish
+- [ ] Phase 7 — Documentation + GitHub publish
 
 ## Current State
 Phase: 1 complete
