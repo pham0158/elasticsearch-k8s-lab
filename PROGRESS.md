@@ -3,7 +3,8 @@
 ## Phases
 - [x] Phase 0 — Project scaffold
 - [x] Phase 1 — Infrastructure + K8s bootstrap
-- [ ] Phase 2 — ECK operator install
+- [x] Phase 2A — ECK operator installed
+- [ ] Phase 2B — ECK deep dive + interview prep
 - [ ] Phase 3 — Elasticsearch deployment
 - [ ] Phase 4 — Kibana deployment
 - [ ] Phase 5 — Data indexing + search
@@ -11,10 +12,10 @@
 - [ ] Phase 7 — Documentation + GitHub publish
 
 ## Current State
-Phase: 1 complete
-Last action: K8s bootstrapped — both nodes Ready, control-plane VPC-A (10.2.1.190), worker VPC-B (10.3.1.61)
-Next action: Phase 2 — ECK operator install
-AWS resources active: YES — stop with ./cluster.sh stop when done (~$0.10/hr while running)
+Phase: 2A complete
+Last action: Phase 2A complete — ECK operator running in elastic-system namespace, 10 CRDs verified
+Next action: Phase 2B — ECK internals exploration
+AWS resources active: NO (instances stopped)
 
 ## Live cluster
 Control plane instance: i-030aebd6ce7f3dac7
