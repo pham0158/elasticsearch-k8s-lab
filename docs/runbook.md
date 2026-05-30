@@ -263,23 +263,25 @@ Note: Kibana serves HTTPS on 5601 — use `-sk https://`, not `http://`.
 
 ### 4. Access Kibana UI (port-forward)
 
-From your local machine (not SSM), set up port-forwarding via SSM:
+Use the Kibana ClusterIP (not DNS — EC2 uses AWS DNS, not CoreDNS):
 ```bash
-# Start SSM port-forward session
+# Get Kibana ClusterIP
+kubectl get svc elastic-lab-kb-http
+
+# SSM port-forward from local Mac (use actual ClusterIP from above)
 aws ssm start-session \
   --target <control-plane-instance-id> \
   --document-name AWS-StartPortForwardingSessionToRemoteHost \
-  --parameters '{"host":["elastic-lab-kb-http"],"portNumber":["5601"],"localPortNumber":["5601"]}'
+  --parameters '{"host":["<KIBANA_CLUSTER_IP>"],"portNumber":["5601"],"localPortNumber":["5601"]}'
 ```
 
-Or from inside the cluster with kubectl port-forward:
-```bash
-kubectl port-forward svc/elastic-lab-kb-http 5601:5601
-```
-
-Then open `https://localhost:5601` in a browser.
+Then open `https://localhost:5601` in a browser (accept self-signed cert warning).
 - Username: `elastic`
 - Password: from `elastic-lab-es-elastic-user` Secret
+
+Note: DNS name `elastic-lab-kb-http.default.svc.cluster.local` does NOT work
+for SSM port-forward — the EC2 instance resolves via AWS DNS (10.x.0.2),
+not Kubernetes CoreDNS. Always use the ClusterIP directly.
 
 ### 5. What to expect in Kibana UI
 
@@ -305,6 +307,98 @@ kubectl exec elastic-lab-es-default-0 -- bash -c \
   "https://localhost:9200/.kibana*/_settings" \
   -H "Content-Type: application/json" \
   -d "{\"index\":{\"number_of_replicas\":0}}"'
+```
+
+---
+
+## ES API Reference
+
+All commands use the ES ClusterIP. Get it with:
+```bash
+kubectl get svc elastic-lab-es-http  # e.g. 10.96.231.119
+ES="https://<CLUSTER_IP>:9200"
+PW="elastic:<password>"
+```
+
+### Basic queries
+
+```bash
+# Match all documents
+curl -su "$PW" -k "$ES/lab-notes/_search?pretty" \
+  -H "Content-Type: application/json" \
+  -d '{"query":{"match_all":{}}}'
+
+# Full-text search
+curl -su "$PW" -k -X GET "$ES/lab-notes/_search?pretty" \
+  -H "Content-Type: application/json" \
+  -d '{"query":{"match":{"description":"operator"}}}'
+
+# Exact filter (use .keyword for aggregations and exact match)
+curl -su "$PW" -k -X GET "$ES/lab-notes/_search?pretty" \
+  -H "Content-Type: application/json" \
+  -d '{"query":{"term":{"difficulty.keyword":"advanced"}}}'
+
+# Document count
+curl -su "$PW" -k "$ES/lab-notes/_count?pretty"
+
+# Index mapping
+curl -su "$PW" -k "$ES/lab-notes/_mapping?pretty"
+```
+
+### Aggregations
+
+Write JSON to a file to avoid SSM line-wrapping issues:
+```bash
+cat > /tmp/agg.json << 'EOF'
+{
+  "size": 0,
+  "aggs": {
+    "by_difficulty": {
+      "terms": { "field": "difficulty.keyword" }
+    },
+    "tags_cloud": {
+      "terms": { "field": "tags.keyword", "size": 10 }
+    }
+  }
+}
+EOF
+curl -su "$PW" -k -X GET "$ES/lab-notes/_search?pretty" \
+  -H "Content-Type: application/json" -d @/tmp/agg.json
+```
+
+### Index documents (avoid line-wrapping in SSM)
+
+Write JSON to a file, then POST:
+```bash
+echo '{"title":"My Doc","description":"...","tags":["a","b"]}' > /tmp/doc.json
+curl -su "$PW" -k -X POST "$ES/lab-notes/_doc" \
+  -H "Content-Type: application/json" -d @/tmp/doc.json
+```
+
+### Cluster and node stats
+
+```bash
+# Cluster health
+curl -su "$PW" -k "$ES/_cluster/health?pretty"
+
+# All indices
+curl -su "$PW" -k "$ES/_cat/indices?v"
+
+# Shard allocation
+curl -su "$PW" -k "$ES/_cat/shards?v"
+
+# Node stats (JVM heap, doc count, store size)
+curl -su "$PW" -k "$ES/_nodes/stats?pretty" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for k, n in d['nodes'].items():
+    m = n['jvm']['mem']
+    print('Node:', n['name'])
+    print('  Heap:', m['heap_used_in_bytes']//1024//1024, '/',
+          m['heap_max_in_bytes']//1024//1024, 'MB')
+    print('  Docs:', n['indices']['docs']['count'])
+    print('  Store:', n['indices']['store']['size_in_bytes']//1024, 'KB')
+"
 ```
 
 ---

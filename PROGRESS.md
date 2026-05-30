@@ -7,15 +7,15 @@
 - [x] Phase 2B — ECK deep dive
 - [x] Phase 3 — Elasticsearch deployment
 - [x] Phase 4 — Kibana deployment
-- [ ] Phase 5 — Data indexing + search
+- [x] Phase 5 — Data indexing + Kibana UI
 - [ ] Phase 6 — Self-healing + resilience
 - [ ] Phase 7 — Documentation + GitHub publish
 
 ## Current State
-Phase: 4 complete
-Last action: Phase 4 complete — Kibana deployed, association controller auto-wired to ES, health green in 41s
-Next action: Phase 5 — Data indexing + Kibana UI exploration
-AWS resources active: YES (running ~$0.10/hr)
+Phase: 5 complete
+Last action: Phase 5 complete — 6 docs indexed, aggregations verified, node stats explored, Kibana UI accessed via SSM port-forward, Discover + Dev Tools confirmed working
+Next action: Phase 6 — Self-healing deep dive + resilience testing
+AWS resources active: NO (instances stopped)
 
 ## Live cluster
 Control plane instance: i-030aebd6ce7f3dac7
