@@ -132,7 +132,62 @@ kubectl get pvc
 If PVC stuck in Pending, check storage class:
 ```bash
 kubectl get storageclass
-# Default SC should exist; if not, install aws-ebs-csi-driver
+```
+
+If no storage class exists (bare kubeadm cluster), install local-path-provisioner:
+```bash
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.26/deploy/local-path-storage.yaml
+kubectl patch storageclass local-path \
+  -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+```
+This uses worker node local disk. Sufficient for single-node lab — no EBS CSI driver needed.
+
+### 3. Get Elasticsearch credentials
+
+ECK auto-generates the `elastic` user password:
+```bash
+kubectl get secret elastic-lab-es-elastic-user \
+  -o jsonpath='{.data.elastic}' | base64 --decode
+echo
+```
+
+### 4. Verify ES is responding
+
+From inside the cluster, use the ClusterIP or service DNS:
+```bash
+# Get ClusterIP
+kubectl get svc elastic-lab-es-http
+
+# Test via kubectl exec on the ES pod
+kubectl exec elastic-lab-es-default-0 -- bash -c \
+  'curl -s -u "elastic:PASSWORD" -k https://localhost:9200'
+# Expected: {"name":"elastic-lab-es-default-0",...,"tagline":"You Know, for Search"}
+```
+
+**Note on SSM terminal line wrapping:** The SSM terminal wraps at ~80 columns.
+Long `curl -d` commands with JSON payloads will break. Use Python instead:
+```bash
+# Write script with short echo lines, run python3 directly
+# Use ClusterIP (e.g. 10.96.231.119:9200) from control plane
+# ssl.CERT_NONE skips self-signed cert verification
+```
+
+### 5. Check cluster health
+
+```bash
+kubectl exec elastic-lab-es-default-0 -- bash -c \
+  'curl -s -u "elastic:PASSWORD" -k https://localhost:9200/_cluster/health?pretty'
+# Expected: "status":"green", "number_of_nodes":1
+```
+
+### 6. Self-healing behavior
+
+ECK automatically recreates deleted pods and reattaches the PVC:
+```bash
+kubectl delete pod elastic-lab-es-default-0
+kubectl get pods -l elasticsearch.k8s.elastic.co/cluster-name=elastic-lab --watch
+# Pod recreates in ~7s, ready in ~90s
+# All data survives — PVC persists independently of the pod
 ```
 
 ---

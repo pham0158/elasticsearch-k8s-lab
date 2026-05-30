@@ -4,18 +4,18 @@
 - [x] Phase 0 — Project scaffold
 - [x] Phase 1 — Infrastructure + K8s bootstrap
 - [x] Phase 2A — ECK operator installed
-- [ ] Phase 2B — ECK deep dive + interview prep
-- [ ] Phase 3 — Elasticsearch deployment
+- [x] Phase 2B — ECK deep dive
+- [x] Phase 3 — Elasticsearch deployment
 - [ ] Phase 4 — Kibana deployment
 - [ ] Phase 5 — Data indexing + search
 - [ ] Phase 6 — Self-healing + resilience
 - [ ] Phase 7 — Documentation + GitHub publish
 
 ## Current State
-Phase: 2A complete
-Last action: Phase 2A complete — ECK operator running in elastic-system namespace, 10 CRDs verified
-Next action: Phase 2B — ECK internals exploration
-AWS resources active: NO (instances stopped)
+Phase: 2B+3 complete
+Last action: ECK internals explored, ES deployed green, 3 docs indexed, self-healing verified (pod deleted → recreated in 7s, all data survived)
+Next action: Phase 4 — Deploy Kibana
+AWS resources active: YES (running ~$0.10/hr)
 
 ## Live cluster
 Control plane instance: i-030aebd6ce7f3dac7
