@@ -37,11 +37,25 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 ```
 
+**IMPORTANT:** The default Flannel manifest uses `10.244.0.0/16` but this lab uses `10.245.0.0/16`.
+Patch the ConfigMap immediately after applying, before Flannel pods fully start:
+
+```bash
+kubectl patch configmap kube-flannel-cfg -n kube-flannel \
+  --type merge \
+  -p '{"data":{"net-conf.json":"{\"Network\": \"10.245.0.0/16\", \"EnableNFTables\": false, \"Backend\": {\"Type\": \"vxlan\"}}"}}'
+
+kubectl rollout restart daemonset/kube-flannel-ds -n kube-flannel
+```
+
 Verify pods come up:
 ```bash
 kubectl get pods -n kube-flannel
-# Expected: kube-flannel-ds-XXXXX   1/1   Running
+# Expected: kube-flannel-ds-XXXXX   1/1   Running  (one per node)
 ```
+
+If CoreDNS is stuck in `ContainerCreating`, this patch is the fix. The error in CoreDNS events will read:
+`failed to load flannel 'subnet.env' file` — caused by Flannel crashing due to the CIDR mismatch.
 
 ### 3. Join worker node
 
